@@ -64,9 +64,9 @@ class UserLoginSerializer(serializers.Serializer):
     
     def validate_password(self, value):
         if not value.isdigit():
-            raise serializers.ValidationError('Password must contain only digits')
+            raise serializers.ValidationError("Password must contain only digits")
         if len(value) != 4:
-            raise serializers.ValidationError('Password must be exactly 4 digits')
+            raise serializers.ValidationError("Password must be exactly 4 digits")
         return value
     
     def validate(self, attrs):
@@ -89,13 +89,13 @@ class UserLoginSerializer(serializers.Serializer):
             
             if user and user.check_password(password):
                 if not user.is_active:
-                    raise serializers.ValidationError('User account is disabled')
+                    raise serializers.ValidationError("User account is disabled")
                 attrs['user'] = user
                 return attrs
             
-            raise serializers.ValidationError('Invalid mobile number or password')
+            raise serializers.ValidationError("Invalid mobile number or password")
         
-        raise serializers.ValidationError('Mobile number and password are required')
+        raise serializers.ValidationError("Mobile number and password are required")
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
