@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
 from login.views import *
 from products.views import *
+from orders.views import *
 
 urlpatterns = [
     # USER SIDE AUTHENTICATIONS
@@ -19,4 +20,15 @@ urlpatterns = [
     path('create-category/', CategoryCreateAPI.as_view(), name='create-category'),
     path('dishes/', DishListAPI.as_view(), name='dish-list'),
     path('create-dish/', DishCreateAPI.as_view(), name='create-dish'),
+
+    # USER CART
+    path('cart/', CartAPIView.as_view(), name='cart-detail'),
+    path('cart/items/', CartItemAPIView.as_view(), name='cart-items'),
+    path('cart/items/<int:pk>/',CartItemDetailAPIView.as_view(), name='cart-item-detail'),
+    path('cart/clear/',CartAPIView.as_view(), name='cart-clear'),
+    
+    # USER ORDER
+    path('orders/place/',PlaceOrderAPIView.as_view(), name='place-order'),
+    path('orders/',OrderListAPIView.as_view(), name='order-list'),
+    path('orders/<int:pk>/',OrderDetailAPIView.as_view(), name='order-detail'),
 ]
