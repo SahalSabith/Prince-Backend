@@ -43,8 +43,19 @@ class RegisterUserAPIView(APIView):
                     'refresh': str(refresh)
                 }
             }, status=status.HTTP_201_CREATED)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Format field errors to single string per field
+        errors = serializer.errors
+        formatted_errors = {}
+
+        for field, error_list in errors.items():
+            # error_list is usually a list of strings, take first
+            if isinstance(error_list, list):
+                formatted_errors[field] = error_list[0]
+            else:
+                formatted_errors[field] = error_list
+
+        return Response(formatted_errors, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginUserAPIView(APIView):
     """User login endpoint"""
@@ -78,8 +89,25 @@ class LoginUserAPIView(APIView):
                     'refresh': str(refresh)
                 }
             }, status=status.HTTP_200_OK)
-        
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Clean and return a single error string
+        errors = serializer.errors
+        error_message = None
+
+        if 'non_field_errors' in errors:
+            error_message = errors['non_field_errors'][0]
+        elif isinstance(errors, dict):
+            # Get first error from the dict
+            first_key = next(iter(errors))
+            first_error = errors[first_key]
+            if isinstance(first_error, list):
+                error_message = first_error[0]
+            else:
+                error_message = first_error
+        else:
+            error_message = "Something went wrong"
+
+        return Response({"error": error_message}, status=status.HTTP_400_BAD_REQUEST)
 
 class LogoutUserAPIView(APIView):
     """User logout endpoint"""
