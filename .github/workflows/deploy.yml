@@ -1,4 +1,4 @@
-name: 🚀 Deploy Django to PythonAnywhere
+name: 🚀 Deploy Django to PythonAnywhere (API)
 
 on:
   push:
@@ -11,62 +11,27 @@ jobs:
     - name: 📥 Checkout code
       uses: actions/checkout@v3
       
-    - name: 🔐 Set up SSH Agent
-      uses: webfactory/ssh-agent@v0.7.0
-      with:
-        ssh-private-key: ${{ secrets.PA_SSH_KEY }}
-        
-    - name: 🔍 Test SSH Connection
+    - name: 🚀 Deploy via PythonAnywhere API
       run: |
-        echo "Testing SSH connection..."
-        ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 ${{ secrets.PA_USERNAME }}@ssh.pythonanywhere.com "echo 'SSH connection successful'" || echo "SSH connection failed"
+        # Pull latest code
+        curl -X POST \
+          -H "Authorization: Token ${{ secrets.PA_API_TOKEN }}" \
+          -d "command=cd /home/${{ secrets.PA_USERNAME }}/Prince-Backend && git pull origin main" \
+          https://www.pythonanywhere.com/api/v0/user/${{ secrets.PA_USERNAME }}/consoles/
         
-    - name: 🚀 Deploy via SSH
-      run: |
-        ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ${{ secrets.PA_USERNAME }}@ssh.pythonanywhere.com << 'EOF'
-        set -e
-        echo "✅ Connected to PythonAnywhere"
+        # Run migrations
+        curl -X POST \
+          -H "Authorization: Token ${{ secrets.PA_API_TOKEN }}" \
+          -d "command=cd /home/${{ secrets.PA_USERNAME }}/Prince-Backend && source /home/${{ secrets.PA_USERNAME }}/.virtualenvs/env/bin/activate && python manage.py migrate --noinput" \
+          https://www.pythonanywhere.com/api/v0/user/${{ secrets.PA_USERNAME }}/consoles/
         
-        # Check current directory and user
-        echo "Current user: $(whoami)"
-        echo "Current directory: $(pwd)"
-        echo "Home directory contents:"
-        ls -la ~/
+        # Collect static files
+        curl -X POST \
+          -H "Authorization: Token ${{ secrets.PA_API_TOKEN }}" \
+          -d "command=cd /home/${{ secrets.PA_USERNAME }}/Prince-Backend && source /home/${{ secrets.PA_USERNAME }}/.virtualenvs/env/bin/activate && python manage.py collectstatic --noinput --clear" \
+          https://www.pythonanywhere.com/api/v0/user/${{ secrets.PA_USERNAME }}/consoles/
         
-        echo "📁 Navigating to project directory..."
-        if [ -d "/home/${{ secrets.PA_USERNAME }}/Prince-Backend/" ]; then
-          cd /home/${{ secrets.PA_USERNAME }}/Prince-Backend/
-          echo "✅ Project directory found"
-        else
-          echo "❌ Project directory not found"
-          exit 1
-        fi
-        
-        echo "📦 Pulling latest changes..."
-        git pull origin main
-        
-        echo "🐍 Checking virtual environment..."
-        if [ -d "/home/${{ secrets.PA_USERNAME }}/Prince-Backend/env/" ]; then
-          source /home/${{ secrets.PA_USERNAME }}/Prince-Backend/env/bin/activate
-          echo "✅ Virtual environment activated"
-        else
-          echo "❌ Virtual environment not found at expected location"
-          echo "Available virtual environments:"
-          ls -la /home/${{ secrets.PA_USERNAME }}/.virtualenvs/ || echo "No .virtualenvs directory found"
-          exit 1
-        fi
-        
-        echo "📋 Installing/updating dependencies..."
-        pip install -r requirements.txt
-        
-        echo "🗄️ Running migrations..."
-        python manage.py migrate --noinput
-        
-        echo "📦 Collecting static files..."
-        python manage.py collectstatic --noinput --clear
-        
-        echo "🔄 Reloading web app..."
-        touch /var/www/${{ secrets.PA_USERNAME }}_pythonanywhere_com_wsgi.py
-        
-        echo "✅ Deployment completed successfully!"
-        EOF
+        # Reload web app
+        curl -X POST \
+          -H "Authorization: Token ${{ secrets.PA_API_TOKEN }}" \
+          https://www.pythonanywhere.com/api/v0/user/${{ secrets.PA_USERNAME }}/webapps/${{ secrets.PA_USERNAME }}.pythonanywhere.com/reload/
