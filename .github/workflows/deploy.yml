@@ -2,7 +2,7 @@ name: Django CI/CD to PythonAnywhere
 
 on:
   push:
-    branches: [ main ]  # Trigger when pushing to main branch
+    branches: [ main ]
 
 jobs:
   build-and-deploy:
@@ -23,10 +23,11 @@ jobs:
         pip install -r requirements.txt
 
     - name: ✅ Run Django tests
+      working-directory: ./prince  # 👈 Point to the folder with manage.py
       run: |
         python manage.py test
 
-    - name: 🚀 Deploy to PythonAnywhere (via git pull)
+    - name: 🚀 Reload PythonAnywhere web app
       run: |
         curl -X POST https://www.pythonanywhere.com/api/v0/user/${{ secrets.PA_USERNAME }}/webapps/${{ secrets.PA_USERNAME }}.pythonanywhere.com/reload/ \
         -H "Authorization: Token ${{ secrets.PA_API_TOKEN }}"
