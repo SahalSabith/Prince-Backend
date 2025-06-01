@@ -1,44 +1,29 @@
-name: Django CI/CD to PythonAnywhere
+name: 🚀 Deploy Django to PythonAnywhere
 
 on:
   push:
     branches: [ main ]
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
     - name: 📥 Checkout code
       uses: actions/checkout@v3
 
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-
-    - name: 📦 Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: ✅ Run Django tests
-      working-directory: ./prince  # 👈 update this if needed
-      run: |
-        python manage.py test
-
-    - name: 🔐 Set up SSH
+    - name: 🔐 Set up SSH access
       uses: webfactory/ssh-agent@v0.7.0
       with:
         ssh-private-key: ${{ secrets.PA_SSH_KEY }}
 
-    - name: 🚀 Deploy to PythonAnywhere
+    - name: 🛠️ SSH into PythonAnywhere and deploy
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.PA_USERNAME }}@ssh.pythonanywhere.com << EOF
-          cd /home/${{ secrets.PA_USERNAME }}/your_project_folder/
-          git pull origin main
-          workon your_virtualenv_name
-          python manage.py migrate
-          python manage.py collectstatic --noinput
-          pythonanywhere reload ${{ secrets.PA_USERNAME }}.pythonanywhere.com
+        ssh -o StrictHostKeyChecking=no ${{ secrets.PA_USERNAME }}@ssh.pythonanywhere.com << 'EOF'
+        cd /home/${{ secrets.PA_USERNAME }}/Prince-Backend/
+        git pull origin main
+        workon env
+        python manage.py migrate --noinput
+        python manage.py collectstatic --noinput
+        touch /var/www/${{ secrets.PA_USERNAME }}_pythonanywhere_com_wsgi.py
         EOF
