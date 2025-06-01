@@ -23,11 +23,22 @@ jobs:
         pip install -r requirements.txt
 
     - name: ✅ Run Django tests
-      working-directory: ./prince  # 👈 Point to the folder with manage.py
+      working-directory: ./prince  # 👈 update this if needed
       run: |
         python manage.py test
 
-    - name: 🚀 Reload PythonAnywhere web app
+    - name: 🔐 Set up SSH
+      uses: webfactory/ssh-agent@v0.7.0
+      with:
+        ssh-private-key: ${{ secrets.PA_SSH_KEY }}
+
+    - name: 🚀 Deploy to PythonAnywhere
       run: |
-        curl -X POST https://www.pythonanywhere.com/api/v0/user/${{ secrets.PA_USERNAME }}/webapps/${{ secrets.PA_USERNAME }}.pythonanywhere.com/reload/ \
-        -H "Authorization: Token ${{ secrets.PA_API_TOKEN }}"
+        ssh -o StrictHostKeyChecking=no ${{ secrets.PA_USERNAME }}@ssh.pythonanywhere.com << EOF
+          cd /home/${{ secrets.PA_USERNAME }}/your_project_folder/
+          git pull origin main
+          workon your_virtualenv_name
+          python manage.py migrate
+          python manage.py collectstatic --noinput
+          pythonanywhere reload ${{ secrets.PA_USERNAME }}.pythonanywhere.com
+        EOF
