@@ -1,93 +1,95 @@
-# Byte-compiled / optimized / DLL files
+# Python __pycache__ and compiled files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-media/
-staticfiles/
-static/
-.env
-
-# Pytest
-.pytest_cache/
-
-# VS Code
-.vscode/
-
-# MacOS
-.DS_Store
-
-# Virtualenv
+# Virtual environment
+env/
 venv/
 ENV/
-env/
-.venv/
 env.bak/
 venv.bak/
 
-# MyPy
-.mypy_cache/
+# Django migrations (optional: keep if versioning migrations)
+**/migrations/*.pyc
+**/migrations/*.pyo
+**/migrations/__pycache__/
+**/migrations/*.py
+
+# If you want to ignore all migration files except __init__.py, use this:
+# **/migrations/!(__init__).py
+
+# Database (SQLite)
+*.sqlite3
+*.db
+
+# Media files (user uploads)
+media/
+
+# Static files (collected with collectstatic)
+staticfiles/
+static/
+
+# Django secret settings
+.env
+*.env
+.env.*
+
+# IDE/Editor settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
 
 # Coverage reports
 htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
 coverage.xml
 *.cover
 *.py,cover
+.cache
 
-# pipenv
+# Testing
+.pytest_cache/
+nosetests.xml
+test_db.sqlite3
+
+# PEP8/Style checks
+.tox/
+.flake8
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+
+# Build/dist files
+build/
+dist/
+*.egg-info/
+.eggs/
+MANIFEST
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Sentry CLI
+.sentryclirc
+
+# VS Code settings
+.vscode/
+
+# Pipenv
 Pipfile.lock
 
-# celery beat schedule file
-celerybeat-schedule
-
-# dotenv
-.env.*
-!.env.example
-
-# IDEs
-.idea/
-*.sublime-workspace
-*.sublime-project
-
-# Node
-node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-
-
-/staticfiles/
-/media/
-
-ssh_key
-ssh_key.pub
+# Poetry
+poetry.lock
