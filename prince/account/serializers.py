@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from .models import UserProfile
+from .models import UserProfiles
 
 class SignupSerializer(serializers.Serializer):
     name = serializers.CharField()
@@ -15,11 +15,11 @@ class SignupSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         user = User.objects.create_user(
-            username=validated_data['phone'],  # Using phone as username
+            username=validated_data['phone'],
             first_name=validated_data['name'],
             password=validated_data['password']
         )
-        UserProfile.objects.create(user=user, phone=validated_data['phone'])
+        UserProfiles.objects.create(user=user, phone=validated_data['phone'])
         return user
 
     def to_representation(self, instance):
