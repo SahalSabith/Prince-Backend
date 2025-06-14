@@ -96,22 +96,22 @@ class PlaceOrderView(APIView):
         order_data = serializer.data
 
         # Different IPs for different printers
-        kitchen_ip = '192.168.1.103'  # Kitchen printer IP
-        counter_ip = '192.168.1.103'  # Counter printer IP (change this)
+        kitchen_ip = '192.168.0.103'  # Kitchen printer IP
+        # counter_ip = '192.168.1.101'  # Counter printer IP (change this)
 
         print_kitchen = print_kitchen_bill(order_data, kitchen_ip)
-        print_counter = print_counter_bill(order_data, counter_ip)
+        # print_counter = print_counter_bill(order_data, counter_ip)
         
         # Log printing results
         logger.info(f"Order {order.id} - Kitchen print: {'Success' if print_kitchen else 'Failed'}")
-        logger.info(f"Order {order.id} - Counter print: {'Success' if print_counter else 'Failed'}")
+        # logger.info(f"Order {order.id} - Counter print: {'Success' if print_counter else 'Failed'}")
         
-        if not print_kitchen and not print_counter:
+        if not print_kitchen:
             return Response({
                 "message": "Order saved but both printers failed",
                 "order_id": order.id
             }, status=status.HTTP_206_PARTIAL_CONTENT)
-        elif not (print_kitchen and print_counter):
+        elif not (print_kitchen):
             failed_printer = "kitchen" if not print_kitchen else "counter"
             return Response({
                 "message": f"Order saved but {failed_printer} printer failed",
