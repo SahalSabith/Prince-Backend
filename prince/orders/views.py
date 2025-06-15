@@ -183,7 +183,7 @@ class PlaceOrderView(APIView):
 
         # Different IPs for different printers
         kitchen_ip = '192.168.0.106'  # Kitchen printer IP
-        counter_ip = '192.168.1.103'  # Counter printer IP (change this)
+        counter_ip = '192.168.1.109'  # Counter printer IP (change this)
 
         print_kitchen = print_kitchen_bill(order_data, kitchen_ip)
         print_counter = print_counter_bill(order_data, counter_ip)
