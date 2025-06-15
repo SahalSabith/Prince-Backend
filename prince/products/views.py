@@ -17,7 +17,7 @@ class CategoriesCreateView(APIView):
 
 class CategoriesListView(APIView):
     def get(self, request):
-        Categories = Categories.objects.all()
+        Categories = Category.objects.all()
         serializer = CategoriesSerializer(Categories, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

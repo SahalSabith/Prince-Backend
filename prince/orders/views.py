@@ -19,7 +19,7 @@ class AddToCartView(APIView):
 
     def post(self, request):
         user = request.user
-        Products_id = request.data.get('Products_id')
+        Products_id = request.data.get('item')
         quantity = int(request.data.get('quantity', 1))
         note = request.data.get('note', '')
 
@@ -27,7 +27,7 @@ class AddToCartView(APIView):
             return Response({'error': 'Products ID is required'}, status=400)
 
         try:
-            Products = Products.objects.get(id=Products_id)
+            Products = Product.objects.get(id=Products_id)
         except Products.DoesNotExist:
             return Response({'error': 'Products not found'}, status=404)
 
@@ -40,7 +40,7 @@ class AddToCartView(APIView):
         # 2. Check if item already exists in cart
         cart_item, item_created = CartItem.objects.get_or_create(
             cart=cart,
-            Products=Products,
+            item=Products,
             defaults={'quantity': quantity, 'note': note}
         )
 
@@ -166,7 +166,7 @@ class PlaceOrderView(APIView):
         for item in cart.items.all():
             order_item = OrderItem.objects.create(
                 order=order,
-                Products=item.Products,
+                item=item.item,
                 quantity=item.quantity,
                 note=item.note,
                 total_amount=item.total_amount

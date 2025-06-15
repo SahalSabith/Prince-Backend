@@ -35,7 +35,7 @@ class CartItem(models.Model):
     item = models.ForeignKey('products.Product',on_delete=models.CASCADE)
 
     def save(self, *args, **kwargs):
-        self.total_amount = self.Products.price * self.quantity
+        self.total_amount = self.item.price * self.quantity
         super().save(*args, **kwargs)
 
     def __str__(self):

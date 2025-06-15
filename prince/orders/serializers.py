@@ -5,17 +5,17 @@ from products.serializers import productserializer
 
 
 class CartItemSerializer(serializers.ModelSerializer):
-    Products = productserializer(read_only=True)
+    item = productserializer(read_only=True)
     total_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
-        fields = ['id', 'Products', 'quantity', 'note', 'total_amount']
-        read_only_fields = ['id', 'Products', 'total_amount']
+        fields = ['id', 'item', 'quantity', 'note', 'total_amount']
+        read_only_fields = ['id', 'item', 'total_amount']
 
     def get_total_amount(self, obj):
         """Calculate total amount for the cart item"""
-        return obj.Products.price * obj.quantity
+        return obj.item.price * obj.quantity
 
     def update(self, instance, validated_data):
         """Custom update method for cart items"""
@@ -36,7 +36,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     def get_total_amount(self, obj):
         """Calculate total amount for the cart"""
-        return sum(item.Products.price * item.quantity for item in obj.items.all())
+        return sum(item.item.price * item.quantity for item in obj.items.all())
 
     def update(self, instance, validated_data):
         """Custom update method to handle cart updates"""
@@ -44,7 +44,7 @@ class CartSerializer(serializers.ModelSerializer):
         instance.table_number = validated_data.get('table_number', instance.table_number)
         
         # Recalculate and save total amount
-        total = sum(item.Products.price * item.quantity for item in instance.items.all())
+        total = sum(item.item.price * item.quantity for item in instance.items.all())
         instance.total_amount = total
         
         instance.save()
@@ -56,7 +56,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'Products', 'quantity', 'note', 'total_amount']
+        fields = ['id', 'item', 'quantity', 'note', 'total_amount']
 
 
 class OrderSerializer(serializers.ModelSerializer):
