@@ -16,13 +16,13 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
+# Quick-start development settings - unsuitable for Productsion
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
+# SECURITY WARNING: keep the secret key used in Productsion secret!
 SECRET_KEY = 'django-insecure-)o#89=&2j6%^ps701#%)_qcs91_ele9wcy-5b9snwr%5&a3wa)'
 
-# SECURITY WARNING: don't run with debug turned on in production!
+# SECURITY WARNING: don't run with debug turned on in Productsion!
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'account',
-    'products',
+    'Productss',
     'orders'
 ]
 

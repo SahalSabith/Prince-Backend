@@ -39,7 +39,7 @@ def print_kitchen_bill(order_data, printer_ip):
 
         for item in order_data.get("items", []):
             qty = item["quantity"]
-            name = item["product"].upper()
+            name = item["Products"].upper()
 
             printer.set(align='center', bold=True, width=3, height=3)
             printer.text(f"{qty} x {name}\n\n")
@@ -93,7 +93,7 @@ def print_counter_bill(order_data, printer_ip):
         printer.set(bold=False)
         
         for item in order_data.get('items', []):
-            name = item['product']['name']
+            name = item['Products']['name']
             qty = item['quantity']
             price = float(item['total_amount'])
             
@@ -158,7 +158,7 @@ def print_bill(order_data, printer_ip, print_type="counter"):
             printer.set(bold=False)
             
             for item in order_data.get('items', []):
-                printer.text(f"{item['quantity']}x {item['product']['name']}\n")
+                printer.text(f"{item['quantity']}x {item['Products']['name']}\n")
                 if item.get('note'):
                     printer.text(f"   Note: {item['note']}\n")
                     
@@ -182,7 +182,7 @@ def print_bill(order_data, printer_ip, print_type="counter"):
             printer.set(bold=False)
             
             for item in order_data.get('items', []):
-                name = item['product']['name']
+                name = item['Products']['name']
                 qty = item['quantity']
                 price = float(item['total_amount'])
                 

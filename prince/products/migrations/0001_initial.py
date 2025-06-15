@@ -13,20 +13,20 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Category',
+            name='Categories',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=100)),
             ],
         ),
         migrations.CreateModel(
-            name='Product',
+            name='Products',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('name', models.CharField(max_length=200)),
                 ('price', models.IntegerField()),
                 ('image', models.ImageField(upload_to='uploads/images/')),
-                ('Category', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='products', to='products.category')),
+                ('Categories', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='Productss', to='Productss.Categories')),
             ],
         ),
     ]

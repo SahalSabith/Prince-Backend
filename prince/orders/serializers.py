@@ -1,21 +1,21 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Cart, CartItem, Product, Order, OrderItem
-from products.serializers import ProductSerializer
+from .models import Cart, CartItem, Products, Order, OrderItem
+from Productss.serializers import ProductsSerializer
 
 
 class CartItemSerializer(serializers.ModelSerializer):
-    product = ProductSerializer(read_only=True)
+    Products = ProductsSerializer(read_only=True)
     total_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'quantity', 'note', 'total_amount']
-        read_only_fields = ['id', 'product', 'total_amount']
+        fields = ['id', 'Products', 'quantity', 'note', 'total_amount']
+        read_only_fields = ['id', 'Products', 'total_amount']
 
     def get_total_amount(self, obj):
         """Calculate total amount for the cart item"""
-        return obj.product.price * obj.quantity
+        return obj.Products.price * obj.quantity
 
     def update(self, instance, validated_data):
         """Custom update method for cart items"""
@@ -36,7 +36,7 @@ class CartSerializer(serializers.ModelSerializer):
 
     def get_total_amount(self, obj):
         """Calculate total amount for the cart"""
-        return sum(item.product.price * item.quantity for item in obj.items.all())
+        return sum(item.Products.price * item.quantity for item in obj.items.all())
 
     def update(self, instance, validated_data):
         """Custom update method to handle cart updates"""
@@ -44,7 +44,7 @@ class CartSerializer(serializers.ModelSerializer):
         instance.table_number = validated_data.get('table_number', instance.table_number)
         
         # Recalculate and save total amount
-        total = sum(item.product.price * item.quantity for item in instance.items.all())
+        total = sum(item.Products.price * item.quantity for item in instance.items.all())
         instance.total_amount = total
         
         instance.save()
@@ -52,11 +52,11 @@ class CartSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    product = serializers.StringRelatedField()
+    Products = serializers.StringRelatedField()
 
     class Meta:
         model = OrderItem
-        fields = ['id', 'product', 'quantity', 'note', 'total_amount']
+        fields = ['id', 'Products', 'quantity', 'note', 'total_amount']
 
 
 class OrderSerializer(serializers.ModelSerializer):
