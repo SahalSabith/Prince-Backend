@@ -71,12 +71,12 @@ def print_kitchen_bill(order_data, printer_ip):
             printer.text(f"TIME: {time_part}\n")
         printer.text("=" * 32 + "\n")
 
-        # Items
+                # Items
         printer.set(align='left', bold=True, width=2, height=2)
         printer.text("ITEMS:\n\n")
 
         printer.set(align='left', bold=False, width=1, height=1)
-        for item in order_data.get("item", []):
+        for item in order_data.get("items", []):
             qty = item.get("quantity", 1)
             name = get_item_name(item)
 
@@ -89,6 +89,7 @@ def print_kitchen_bill(order_data, printer_ip):
                 printer.text(f"   Note: {note}\n")
 
             printer.text("\n")
+
 
         printer.set(align='center', bold=False, width=1, height=1)
         printer.text("=" * 32 + "\n")
@@ -137,14 +138,13 @@ def print_counter_bill(order_data, printer_ip):
 
         printer.text("-" * 32 + "\n")
 
-        # Items
         printer.set(bold=True)
         printer.text("ITEMS:\n")
         printer.set(bold=False)
 
         total_calculated = 0
 
-        for item in order_data.get("item", []):
+        for item in order_data.get("items", []):
             qty = item.get('quantity', 1)
             name = get_item_name(item)
             price = get_item_price(item, qty)
@@ -163,6 +163,7 @@ def print_counter_bill(order_data, printer_ip):
             note = item.get('note', '') or item.get('notes', '')
             if note:
                 printer.text(f"   Note: {note}\n")
+
 
         printer.text("-" * 32 + "\n")
 
