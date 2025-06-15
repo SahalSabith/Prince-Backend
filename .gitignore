@@ -10,14 +10,10 @@ ENV/
 env.bak/
 venv.bak/
 
-# Django migrations (optional: keep if versioning migrations)
+# Django migrations — ignore only pyc/pyo and cache, keep .py files
+**/migrations/__pycache__/
 **/migrations/*.pyc
 **/migrations/*.pyo
-**/migrations/__pycache__/
-**/migrations/*.py
-
-# If you want to ignore all migration files except __init__.py, use this:
-# **/migrations/!(__init__).py
 
 # Database (SQLite)
 *.sqlite3
