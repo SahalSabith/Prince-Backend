@@ -6,7 +6,7 @@ from rest_framework import status
 from .models import Cart, CartItem
 from .serializers import OrderSerializer
 from .models import Order, OrderItem, Cart, CartItem
-from products.models import Product
+from products.models import Products
 from .serializers import CartSerializer, CartItemSerializer
 from .utils import print_bill, print_kitchen_bill, print_counter_bill
 import logging
@@ -19,17 +19,17 @@ class AddToCartView(APIView):
 
     def post(self, request):
         user = request.user
-        product_id = request.data.get('product_id')
+        Products_id = request.data.get('Products_id')
         quantity = int(request.data.get('quantity', 1))
         note = request.data.get('note', '')
 
-        if not product_id:
-            return Response({'error': 'Product ID is required'}, status=400)
+        if not Products_id:
+            return Response({'error': 'Products ID is required'}, status=400)
 
         try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return Response({'error': 'Product not found'}, status=404)
+            Products = Products.objects.get(id=Products_id)
+        except Products.DoesNotExist:
+            return Response({'error': 'Products not found'}, status=404)
 
         # 1. Get or create the cart
         cart, created = Cart.objects.get_or_create(
@@ -40,7 +40,7 @@ class AddToCartView(APIView):
         # 2. Check if item already exists in cart
         cart_item, item_created = CartItem.objects.get_or_create(
             cart=cart,
-            product=product,
+            Products=Products,
             defaults={'quantity': quantity, 'note': note}
         )
 
@@ -67,7 +67,7 @@ class CartItemUpdateView(APIView):
     def patch(self, request, item_id):
         try:
             # Get the cart item and ensure it belongs to the user
-            cart_item = CartItem.objects.select_related('cart', 'product').get(
+            cart_item = CartItem.objects.select_related('cart', 'Products').get(
                 id=item_id,
                 cart__user=request.user
             )
@@ -166,7 +166,7 @@ class PlaceOrderView(APIView):
         for item in cart.items.all():
             order_item = OrderItem.objects.create(
                 order=order,
-                product=item.product,
+                Products=item.Products,
                 quantity=item.quantity,
                 note=item.note,
                 total_amount=item.total_amount

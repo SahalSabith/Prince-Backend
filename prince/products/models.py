@@ -6,7 +6,7 @@ class Categories(models.Model):
     def __str__(self):
         return self.name
 
-class Product(models.Model):
+class Products(models.Model):
     Categories = models.ForeignKey(Categories, on_delete=models.CASCADE, related_name='products')
     name = models.CharField(max_length=200)
     price = models.IntegerField()

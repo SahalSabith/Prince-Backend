@@ -1,8 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Categories, Product
-from .serializers import CategoriesSerializer, ProductSerializer
+from .models import Categories, Products
+from .serializers import CategoriesSerializer, productserializer
 from django.shortcuts import get_object_or_404
 
 
@@ -17,20 +17,20 @@ class CategoriesCreateView(APIView):
 
 class CategoriesListView(APIView):
     def get(self, request):
-        categories = Categories.objects.all()
-        serializer = CategoriesSerializer(categories, many=True)
+        Categories = Categories.objects.all()
+        serializer = CategoriesSerializer(Categories, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-class ProductListView(APIView):
+class ProductsListView(APIView):
     def get(self, request):
-        products = Product.objects.all()
-        serializer = ProductSerializer(products, many=True)
+        products = Products.objects.all()
+        serializer = productserializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
-class ProductDetailView(APIView):
+class ProductsDetailView(APIView):
     def get(self, request, pk):
-        product = get_object_or_404(Product, pk=pk)
-        serializer = ProductSerializer(product)
+        Products = get_object_or_404(Products, pk=pk)
+        serializer = productserializer(Products)
         return Response(serializer.data, status=status.HTTP_200_OK)
