@@ -6,7 +6,7 @@ class CategoriesSerializer(serializers.ModelSerializer):
         model = Categories
         fields = ['id', 'name']
 
-class ProductsSerializer(serializers.ModelSerializer):
+class productserializer(serializers.ModelSerializer):
     Categories = CategoriesSerializer(read_only=True)
 
     class Meta:

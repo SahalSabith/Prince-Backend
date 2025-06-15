@@ -1,11 +1,11 @@
 # serializers.py
 from rest_framework import serializers
 from .models import Cart, CartItem, Products, Order, OrderItem
-from Productss.serializers import ProductsSerializer
+from products.serializers import productserializer
 
 
 class CartItemSerializer(serializers.ModelSerializer):
-    Products = ProductsSerializer(read_only=True)
+    Products = productserializer(read_only=True)
     total_amount = serializers.SerializerMethodField()
 
     class Meta:

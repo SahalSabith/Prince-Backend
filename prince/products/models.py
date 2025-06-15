@@ -7,7 +7,7 @@ class Categories(models.Model):
         return self.name
 
 class Products(models.Model):
-    Categories = models.ForeignKey(Categories, on_delete=models.CASCADE, related_name='Productss')
+    Categories = models.ForeignKey(Categories, on_delete=models.CASCADE, related_name='products')
     name = models.CharField(max_length=200)
     price = models.IntegerField()
     image = models.ImageField(upload_to='uploads/images/')

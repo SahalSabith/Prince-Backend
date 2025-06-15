@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from .models import Categories, Products
-from .serializers import CategoriesSerializer, ProductsSerializer
+from .serializers import CategoriesSerializer, productserializer
 from django.shortcuts import get_object_or_404
 
 
@@ -24,13 +24,13 @@ class CategoriesListView(APIView):
 
 class ProductsListView(APIView):
     def get(self, request):
-        Productss = Products.objects.all()
-        serializer = ProductsSerializer(Productss, many=True)
+        products = Products.objects.all()
+        serializer = productserializer(products, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 
 class ProductsDetailView(APIView):
     def get(self, request, pk):
         Products = get_object_or_404(Products, pk=pk)
-        serializer = ProductsSerializer(Products)
+        serializer = productserializer(Products)
         return Response(serializer.data, status=status.HTTP_200_OK)
