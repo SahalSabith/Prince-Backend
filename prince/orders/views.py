@@ -67,7 +67,7 @@ class CartItemUpdateView(APIView):
     def patch(self, request, item_id):
         try:
             # Get the cart item and ensure it belongs to the user
-            cart_item = CartItem.objects.select_related('cart', 'Products').get(
+            cart_item = CartItem.objects.select_related('cart', 'item').get(
                 id=item_id,
                 cart__user=request.user
             )
@@ -183,7 +183,7 @@ class PlaceOrderView(APIView):
 
         # Different IPs for different printers
         kitchen_ip = '192.168.0.106'  # Kitchen printer IP
-        counter_ip = '192.168.1.109'  # Counter printer IP (change this)
+        counter_ip = '192.168.0.103'  # Counter printer IP (change this)
 
         print_kitchen = print_kitchen_bill(order_data, kitchen_ip)
         print_counter = print_counter_bill(order_data, counter_ip)

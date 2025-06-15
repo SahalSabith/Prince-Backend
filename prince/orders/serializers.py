@@ -52,7 +52,7 @@ class CartSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    Products = serializers.StringRelatedField()
+    item = serializers.StringRelatedField()
 
     class Meta:
         model = OrderItem
