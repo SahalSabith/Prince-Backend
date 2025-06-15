@@ -52,7 +52,7 @@ def print_kitchen_bill(order_data, printer_ip):
         printer.text("ITEMS:\n")
         
         printer.set(align='left', bold=False, width=1, height=1)
-        for item in order_data.get("items", []):
+        for item in order_data.get("item", []):
             qty = item.get("quantity", 1)
             
             # Fixed item name access
@@ -139,7 +139,7 @@ def print_counter_bill(order_data, printer_ip):
         
         total_calculated = 0
         
-        for item in order_data.get('items', []):
+        for item in order_data.get('item', []):
             # Fixed item name access
             name = item.get("item", {}).get("name", "Unknown Item")
             if not name or name == "Unknown Item":
