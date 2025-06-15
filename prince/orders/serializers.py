@@ -1,4 +1,3 @@
-# serializers.py
 from rest_framework import serializers
 from .models import Cart, CartItem, Product, Order, OrderItem
 from products.serializers import productserializer
@@ -14,11 +13,9 @@ class CartItemSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'item', 'total_amount']
 
     def get_total_amount(self, obj):
-        """Calculate total amount for the cart item"""
         return obj.item.price * obj.quantity
 
     def update(self, instance, validated_data):
-        """Custom update method for cart items"""
         instance.quantity = validated_data.get('quantity', instance.quantity)
         instance.note = validated_data.get('note', instance.note)
         instance.save()
@@ -35,28 +32,29 @@ class CartSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'total_amount', 'items']
 
     def get_total_amount(self, obj):
-        """Calculate total amount for the cart"""
         return sum(item.item.price * item.quantity for item in obj.items.all())
 
     def update(self, instance, validated_data):
-        """Custom update method to handle cart updates"""
         instance.order_type = validated_data.get('order_type', instance.order_type)
         instance.table_number = validated_data.get('table_number', instance.table_number)
-        
-        # Recalculate and save total amount
+
         total = sum(item.item.price * item.quantity for item in instance.items.all())
         instance.total_amount = total
-        
+
         instance.save()
         return instance
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    item = serializers.StringRelatedField()
+    item = productserializer(read_only=True)  # ✅ FIXED: Use nested serializer instead of StringRelatedField
+    total_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
         fields = ['id', 'item', 'quantity', 'note', 'total_amount']
+
+    def get_total_amount(self, obj):
+        return obj.item.price * obj.quantity
 
 
 class OrderSerializer(serializers.ModelSerializer):
@@ -64,4 +62,4 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'order_type', 'total_amount', 'ordered_at', 'items']
+        fields = ['id', 'order_type', 'total_amount', 'ordered_at', 'table_number', 'items']
