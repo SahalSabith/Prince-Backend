@@ -1,7 +1,7 @@
 # models.py
 from django.db import models
 from django.contrib.auth.models import User
-from products.models import Products
+from products.models import Product
 from django.utils import timezone
 
 
@@ -29,17 +29,17 @@ class Cart(models.Model):
 
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
-    Products = models.ForeignKey(Products, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     note = models.TextField(blank=True, null=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    item = models.ForeignKey('products.Product',on_delete=models.CASCADE)
 
     def save(self, *args, **kwargs):
         self.total_amount = self.Products.price * self.quantity
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"{self.Products.name} x {self.quantity} in {self.cart.user.username}'s cart"
+        return f"{self.item.name} x {self.quantity} in {self.cart.user.username}'s cart"
 
 
 class Order(models.Model):
@@ -61,10 +61,10 @@ class Order(models.Model):
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-    Products = models.ForeignKey(Products, on_delete=models.CASCADE)
+    item = models.ForeignKey('products.Product',on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
     note = models.TextField(blank=True, null=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     def __str__(self):
-        return f"{self.Products.name} x {self.quantity}"
+        return f"{self.item.name} x {self.quantity}"

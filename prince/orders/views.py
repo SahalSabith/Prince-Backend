@@ -6,7 +6,7 @@ from rest_framework import status
 from .models import Cart, CartItem
 from .serializers import OrderSerializer
 from .models import Order, OrderItem, Cart, CartItem
-from products.models import Products
+from products.models import Product
 from .serializers import CartSerializer, CartItemSerializer
 from .utils import print_bill, print_kitchen_bill, print_counter_bill
 import logging
