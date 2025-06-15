@@ -51,28 +51,45 @@ def print_kitchen_bill(order_data, printer_ip):
         printer.set(align='left', bold=True, width=2, height=2)
         printer.text("ITEMS:\n")
         
+        # Debug: Print raw item data structure
+        print(f"DEBUG - order_data keys: {order_data.keys()}")
+        print(f"DEBUG - items data: {order_data.get('item', [])}")
+        
         printer.set(align='left', bold=False, width=1, height=1)
         for item in order_data.get("item", []):
+            print(f"DEBUG - Processing item: {item}")
+            
             qty = item.get("quantity", 1)
             
-            # Fixed item name access
-            name = item.get("item", {}).get("name", "Unknown Item")
-            if not name or name == "Unknown Item":
-                # Try alternative access patterns
-                if hasattr(item.get("item"), 'name'):
-                    name = item["item"].name
-                elif isinstance(item.get("item"), dict) and "name" in item["item"]:
-                    name = item["item"]["name"]
-                else:
-                    name = "Unknown Item"
+            # Multiple ways to get item name - try all possible patterns
+            name = "Unknown Item"
+            
+            # Method 1: Direct access from nested dict
+            if isinstance(item.get("item"), dict) and "name" in item["item"]:
+                name = item["item"]["name"]
+            # Method 2: If item is a Django model instance
+            elif hasattr(item.get("item"), 'name'):
+                name = item["item"].name
+            # Method 3: Direct name field in item
+            elif "name" in item:
+                name = item["name"]
+            # Method 4: If the structure is different
+            elif "product" in item:
+                if isinstance(item["product"], dict) and "name" in item["product"]:
+                    name = item["product"]["name"]
+                elif hasattr(item["product"], 'name'):
+                    name = item["product"].name
+            
+            print(f"DEBUG - Item name resolved to: {name}")
             
             printer.set(align='left', bold=True, width=2, height=2)
             printer.text(f"{qty} x {name.upper()}\n")
             
             # Add note if present
-            if item.get('note'):
+            note = item.get('note', '') or item.get('notes', '')
+            if note:
                 printer.set(align='left', bold=False, width=1, height=1)
-                printer.text(f"   Note: {item['note']}\n")
+                printer.text(f"   Note: {note}\n")
             
             printer.set(align='left', bold=False, width=1, height=1)
             printer.text("\n")
@@ -137,37 +154,70 @@ def print_counter_bill(order_data, printer_ip):
         printer.text("ITEMS:\n")
         printer.set(bold=False)
         
+        # Debug: Print raw item data structure
+        print(f"DEBUG - order_data keys: {order_data.keys()}")
+        print(f"DEBUG - items data: {order_data.get('item', [])}")
+        
         total_calculated = 0
         
         for item in order_data.get('item', []):
-            # Fixed item name access
-            name = item.get("item", {}).get("name", "Unknown Item")
-            if not name or name == "Unknown Item":
-                # Try alternative access patterns
-                if hasattr(item.get("item"), 'name'):
-                    name = item["item"].name
-                elif isinstance(item.get("item"), dict) and "name" in item["item"]:
-                    name = item["item"]["name"]
-                else:
-                    name = "Unknown Item"
+            print(f"DEBUG - Processing item: {item}")
+            
+            # Multiple ways to get item name - try all possible patterns
+            name = "Unknown Item"
+            
+            # Method 1: Direct access from nested dict
+            if isinstance(item.get("item"), dict) and "name" in item["item"]:
+                name = item["item"]["name"]
+            # Method 2: If item is a Django model instance
+            elif hasattr(item.get("item"), 'name'):
+                name = item["item"].name
+            # Method 3: Direct name field in item
+            elif "name" in item:
+                name = item["name"]
+            # Method 4: If the structure is different
+            elif "product" in item:
+                if isinstance(item["product"], dict) and "name" in item["product"]:
+                    name = item["product"]["name"]
+                elif hasattr(item["product"], 'name'):
+                    name = item["product"].name
             
             qty = item.get('quantity', 1)
             
-            # Handle price calculation
-            if 'total_amount' in item:
+            # Handle price calculation - try multiple patterns
+            price = 0
+            
+            # Method 1: Use total_amount from item
+            if 'total_amount' in item and item['total_amount']:
                 price = float(item['total_amount'])
-            else:
-                # Fallback to calculating from product price
-                unit_price = float(item.get("item", {}).get("price", 0))
-                if unit_price == 0 and hasattr(item.get("item"), 'price'):
-                    unit_price = float(item["item"].price)
+            # Method 2: Calculate from nested item price
+            elif isinstance(item.get("item"), dict) and "price" in item["item"]:
+                unit_price = float(item["item"]["price"])
                 price = unit_price * qty
+            # Method 3: If item is Django model instance
+            elif hasattr(item.get("item"), 'price'):
+                unit_price = float(item["item"].price)
+                price = unit_price * qty
+            # Method 4: Direct price field
+            elif "price" in item:
+                unit_price = float(item["price"])
+                price = unit_price * qty
+            # Method 5: Product field
+            elif "product" in item:
+                if isinstance(item["product"], dict) and "price" in item["product"]:
+                    unit_price = float(item["product"]["price"])
+                    price = unit_price * qty
+                elif hasattr(item["product"], 'price'):
+                    unit_price = float(item["product"].price)
+                    price = unit_price * qty
+            
+            print(f"DEBUG - Item name: {name}, Qty: {qty}, Price: {price}")
             
             total_calculated += price
             
             # Format item line with proper spacing
             item_line = f"{qty}x {name}"
-            price_str = f"Rs{price:.2f}"  # Changed from ₹ to Rs to avoid ? mark
+            price_str = f"Rs{price:.2f}"
             
             # Calculate spaces needed for alignment
             line_length = len(item_line) + len(price_str)
@@ -180,15 +230,16 @@ def print_counter_bill(order_data, printer_ip):
                 printer.text(f"{' ' * (32 - len(price_str))}{price_str}\n")
             
             # Add note if present
-            if item.get('note'):
-                printer.text(f"   Note: {item['note']}\n")
+            note = item.get('note', '') or item.get('notes', '')
+            if note:
+                printer.text(f"   Note: {note}\n")
         
         printer.text("-" * 32 + "\n")
         
         # ========== Total ==========
         printer.set(bold=True)
         total_amount = order_data.get('total_amount', total_calculated)
-        total_line = f"TOTAL: Rs{float(total_amount):.2f}"  # Changed from ₹ to Rs to avoid ? mark
+        total_line = f"TOTAL: Rs{float(total_amount):.2f}"
         printer.text(f"{total_line}\n")
         printer.set(bold=False)
         
