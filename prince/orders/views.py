@@ -189,7 +189,7 @@ class PlaceOrderView(APIView):
             "order_type": order.order_type,
             "table_number": order.table_number,
             "total_amount": float(order.total_amount),
-            "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at": order.ordered_at.strftime("%Y-%m-%d %H:%M:%S"),
             "items": []
         }
 
