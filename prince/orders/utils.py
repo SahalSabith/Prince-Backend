@@ -7,9 +7,6 @@ logger = logging.getLogger(__name__)
 
 
 def get_item_name(item):
-    """
-    Safely extract item name from nested item or product dicts.
-    """
     item_data = item.get("item") or item.get("product")
     if isinstance(item_data, dict):
         return item_data.get("name", "Unknown Item")
@@ -19,9 +16,6 @@ def get_item_name(item):
 
 
 def get_item_price(item, qty=1):
-    """
-    Get item price either from total_amount or unit price * qty.
-    """
     item_data = item.get("item") or item.get("product")
     try:
         if 'total_amount' in item:
@@ -38,11 +32,10 @@ def get_item_price(item, qty=1):
 
 
 def print_kitchen_bill(order_data, printer_ip):
-    """Print simplified kitchen copy with large order type and items."""
     try:
         printer = Network(printer_ip)
 
-        # Branding
+        # Header
         printer.set(align='center', bold=True, width=2, height=2)
         printer.text("PRINCE BAKERY\n")
         printer.text("KITCHEN COPY\n\n")
@@ -71,7 +64,7 @@ def print_kitchen_bill(order_data, printer_ip):
             printer.text(f"TIME: {time_part}\n")
         printer.text("=" * 32 + "\n")
 
-                # Items
+        # Items
         printer.set(align='left', bold=True, width=2, height=2)
         printer.text("ITEMS:\n\n")
 
@@ -90,7 +83,6 @@ def print_kitchen_bill(order_data, printer_ip):
 
             printer.text("\n")
 
-
         printer.set(align='center', bold=False, width=1, height=1)
         printer.text("=" * 32 + "\n")
         printer.text("\n\n\n")
@@ -105,7 +97,6 @@ def print_kitchen_bill(order_data, printer_ip):
 
 
 def print_counter_bill(order_data, printer_ip):
-    """Print detailed customer copy with prices and totals."""
     try:
         printer = Network(printer_ip)
 
@@ -138,6 +129,7 @@ def print_counter_bill(order_data, printer_ip):
 
         printer.text("-" * 32 + "\n")
 
+        # Items
         printer.set(bold=True)
         printer.text("ITEMS:\n")
         printer.set(bold=False)
@@ -148,7 +140,6 @@ def print_counter_bill(order_data, printer_ip):
             qty = item.get('quantity', 1)
             name = get_item_name(item)
             price = get_item_price(item, qty)
-
             total_calculated += price
 
             item_line = f"{qty}x {name}"
@@ -163,7 +154,6 @@ def print_counter_bill(order_data, printer_ip):
             note = item.get('note', '') or item.get('notes', '')
             if note:
                 printer.text(f"   Note: {note}\n")
-
 
         printer.text("-" * 32 + "\n")
 
@@ -190,7 +180,6 @@ def print_counter_bill(order_data, printer_ip):
 
 
 def print_bill(order_data, printer_ip, print_type="counter"):
-    """Print to either kitchen or counter."""
     if print_type == "kitchen":
         return print_kitchen_bill(order_data, printer_ip)
     return print_counter_bill(order_data, printer_ip)

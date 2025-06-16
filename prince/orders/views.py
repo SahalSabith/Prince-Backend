@@ -156,12 +156,15 @@ class PlaceOrderView(APIView):
         order_type = request.data.get('order_type', cart.order_type)
         table_number = request.data.get('table_number', cart.table_number)
 
+        # Create Order instance
         order = Order.objects.create(
             user=request.user,
             order_type=order_type,
+            table_number=table_number,
             total_amount=cart.total_amount
         )
 
+        # Create OrderItems
         order_items = []
         for item in cart.items.all():
             order_item = OrderItem.objects.create(
@@ -173,36 +176,56 @@ class PlaceOrderView(APIView):
             )
             order_items.append(order_item)
 
-        # Clear Cart
+        # Clear cart
         cart.items.all().delete()
         cart.total_amount = 0
         cart.save()
 
-        serializer = OrderSerializer(order)
-        order_data = serializer.data
+        # ✅ Manually construct dictionary instead of using serializer
+        
+        order_data = {
+            "id": order.id,
+            "user": order.user.id,
+            "order_type": order.order_type,
+            "table_number": order.table_number,
+            "total_amount": float(order.total_amount),
+            "created_at": order.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "items": []
+        }
 
-        # Different IPs for different printers
-        kitchen_ip = '192.168.0.106'  # Kitchen printer IP
-        counter_ip = '192.168.0.103'  # Counter printer IP (change this)
+        for oi in order_items:
+            order_data["items"].append({
+                "item_id": oi.item.id,
+                "item_name": oi.item.name,
+                "quantity": oi.quantity,
+                "note": oi.note,
+                "total_amount": float(oi.total_amount)
+            })
+
+        # Print to Kitchen and Counter
+        kitchen_ip = '192.168.0.106'
+        counter_ip = '192.168.0.103'
 
         print_kitchen = print_kitchen_bill(order_data, kitchen_ip)
         print_counter = print_counter_bill(order_data, counter_ip)
-        
-        # Log printing results
+
         logger.info(f"Order {order.id} - Kitchen print: {'Success' if print_kitchen else 'Failed'}")
         logger.info(f"Order {order.id} - Counter print: {'Success' if print_counter else 'Failed'}")
-        
+
         if not print_kitchen and not print_counter:
             return Response({
-                "detail": "Order saved but kitchen printer failed",
+                "detail": "Order saved but printing failed",
                 "order_id": order.id
             }, status=status.HTTP_206_PARTIAL_CONTENT)
 
         return Response({
-            'detail': 'Order placed successfully!', 
-            'order_id': order.id,
-            'printing_status': 'Kitchen printer successful'
-        })
+            "detail": "Order placed successfully!",
+            "order_id": order.id,
+            "printing_status": {
+                "kitchen": "Success" if print_kitchen else "Failed",
+                "counter": "Success" if print_counter else "Failed"
+            }
+        }, status=status.HTTP_201_CREATED)
 
 
 class OrderListView(APIView):
