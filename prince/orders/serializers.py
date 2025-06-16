@@ -1,5 +1,7 @@
+# serializers.py
 from rest_framework import serializers
-from .models import Cart, CartItem, Product, Order, OrderItem
+from .models import Cart, CartItem, Order, OrderItem
+from products.models import Product
 from products.serializers import productserializer
 
 
@@ -38,6 +40,7 @@ class CartSerializer(serializers.ModelSerializer):
         instance.order_type = validated_data.get('order_type', instance.order_type)
         instance.table_number = validated_data.get('table_number', instance.table_number)
 
+        # Calculate total amount based on current items
         total = sum(item.item.price * item.quantity for item in instance.items.all())
         instance.total_amount = total
 
@@ -46,7 +49,7 @@ class CartSerializer(serializers.ModelSerializer):
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
-    item = productserializer(read_only=True)  # ✅ FIXED: Use nested serializer instead of StringRelatedField
+    item = productserializer(read_only=True)
     total_amount = serializers.SerializerMethodField()
 
     class Meta:
@@ -54,7 +57,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
         fields = ['id', 'item', 'quantity', 'note', 'total_amount']
 
     def get_total_amount(self, obj):
-        return obj.item.price * obj.quantity
+        return obj.item.price * obj.quantity if obj.item else obj.total_amount
 
 
 class OrderSerializer(serializers.ModelSerializer):

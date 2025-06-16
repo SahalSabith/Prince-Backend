@@ -7,31 +7,49 @@ logger = logging.getLogger(__name__)
 
 
 def get_item_name(item):
+    """Extract item name from various data structures"""
+    # For direct item name
+    if 'item_name' in item:
+        return item['item_name']
+    
+    # For nested item object
     item_data = item.get("item") or item.get("product")
     if isinstance(item_data, dict):
         return item_data.get("name", "Unknown Item")
     elif hasattr(item_data, "name"):
         return item_data.name
+    
+    # Fallback to direct name field
     return item.get("name", "Unknown Item")
 
 
 def get_item_price(item, qty=1):
-    item_data = item.get("item") or item.get("product")
+    """Extract item price and calculate total"""
     try:
+        # First check for direct total_amount
         if 'total_amount' in item:
             return float(item['total_amount'])
-        elif isinstance(item_data, dict) and "price" in item_data:
+        
+        # Then check for nested item object with price
+        item_data = item.get("item") or item.get("product")
+        if isinstance(item_data, dict) and "price" in item_data:
             return float(item_data["price"]) * qty
         elif hasattr(item_data, "price"):
             return float(item_data.price) * qty
-        elif "price" in item:
+        
+        # Fallback to direct price field
+        if "price" in item:
             return float(item["price"]) * qty
-    except Exception:
+            
+    except (ValueError, TypeError, AttributeError):
+        logger.error(f"Error calculating price for item: {item}")
         return 0.0
+    
     return 0.0
 
 
 def print_kitchen_bill(order_data, printer_ip):
+    """Print kitchen bill with improved error handling"""
     try:
         printer = Network(printer_ip)
 
@@ -58,9 +76,13 @@ def print_kitchen_bill(order_data, printer_ip):
         printer.text("=" * 32 + "\n")
         printer.text(f"TOKEN: {order_data.get('id', 'N/A')}\n")
 
-        ordered_at = order_data.get('ordered_at', '')
+        # Fixed: Handle both 'ordered_at' and 'created_at'
+        ordered_at = order_data.get('ordered_at') or order_data.get('created_at', '')
         if ordered_at:
-            time_part = ordered_at[11:16] if len(ordered_at) > 16 else ordered_at
+            if len(ordered_at) > 16:
+                time_part = ordered_at[11:16]
+            else:
+                time_part = ordered_at
             printer.text(f"TIME: {time_part}\n")
         printer.text("=" * 32 + "\n")
 
@@ -97,6 +119,7 @@ def print_kitchen_bill(order_data, printer_ip):
 
 
 def print_counter_bill(order_data, printer_ip):
+    """Print counter bill with improved error handling"""
     try:
         printer = Network(printer_ip)
 
@@ -120,7 +143,8 @@ def print_counter_bill(order_data, printer_ip):
         if order_type == 'TABLE' and order_data.get('table_number'):
             printer.text(f"TABLE: {order_data['table_number']}\n")
 
-        ordered_at = order_data.get('ordered_at', '')
+        # Fixed: Handle both 'ordered_at' and 'created_at'
+        ordered_at = order_data.get('ordered_at') or order_data.get('created_at', '')
         if len(ordered_at) >= 19:
             printer.text(f"DATE: {ordered_at[:10]}\n")
             printer.text(f"TIME: {ordered_at[11:19]}\n")
@@ -180,6 +204,7 @@ def print_counter_bill(order_data, printer_ip):
 
 
 def print_bill(order_data, printer_ip, print_type="counter"):
+    """Generic print function"""
     if print_type == "kitchen":
         return print_kitchen_bill(order_data, printer_ip)
     return print_counter_bill(order_data, printer_ip)

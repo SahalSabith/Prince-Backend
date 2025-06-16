@@ -1,3 +1,4 @@
+# products/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -17,8 +18,8 @@ class CategoriesCreateView(APIView):
 
 class CategoriesListView(APIView):
     def get(self, request):
-        Categories = Category.objects.all()
-        serializer = CategoriesSerializer(Categories, many=True)
+        categories = Category.objects.all()  # Fixed: Changed variable name from Categories to categories
+        serializer = CategoriesSerializer(categories, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -31,6 +32,6 @@ class ProductsListView(APIView):
 
 class ProductsDetailView(APIView):
     def get(self, request, pk):
-        Products = get_object_or_404(Products, pk=pk)
-        serializer = productserializer(Products)
+        product = get_object_or_404(Product, pk=pk)  # Fixed: Changed Products to Product
+        serializer = productserializer(product)
         return Response(serializer.data, status=status.HTTP_200_OK)

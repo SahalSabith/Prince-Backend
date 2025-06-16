@@ -19,7 +19,7 @@ class AddToCartView(APIView):
 
     def post(self, request):
         user = request.user
-        Products_id = request.data.get('item')
+        Products_id = request.data.get('item')  # Keep API name as 'item'
         quantity = int(request.data.get('quantity', 1))
         note = request.data.get('note', '')
 
@@ -28,7 +28,7 @@ class AddToCartView(APIView):
 
         try:
             Products = Product.objects.get(id=Products_id)
-        except Products.DoesNotExist:
+        except Product.DoesNotExist:  # Fixed: Product not Products
             return Response({'error': 'Products not found'}, status=404)
 
         # 1. Get or create the cart
@@ -51,7 +51,8 @@ class AddToCartView(APIView):
             cart_item.save()
 
         # 3. Recalculate cart total
-        total = sum(item.total_amount for item in cart.items.all())
+        cart.refresh_from_db()  # Refresh to get updated items
+        total = sum(item.item.price * item.quantity for item in cart.items.all())
         cart.total_amount = total
         cart.save()
 
@@ -97,7 +98,7 @@ class CartItemUpdateView(APIView):
 
         # Recalculate cart total
         cart = cart_item.cart
-        total = sum(item.total_amount for item in cart.items.all())
+        total = sum(item.item.price * item.quantity for item in cart.items.all())
         cart.total_amount = total
         cart.save()
 
@@ -128,7 +129,7 @@ class CartItemDeleteView(APIView):
         cart_item.delete()
 
         # Recalculate cart total
-        total = sum(item.total_amount for item in cart.items.all())
+        total = sum(item.item.price * item.quantity for item in cart.items.all())
         cart.total_amount = total
         cart.save()
 
@@ -172,7 +173,7 @@ class PlaceOrderView(APIView):
                 item=item.item,
                 quantity=item.quantity,
                 note=item.note,
-                total_amount=item.total_amount
+                total_amount=item.item.price * item.quantity  # Fixed: Calculate based on item price
             )
             order_items.append(order_item)
 
@@ -182,14 +183,13 @@ class PlaceOrderView(APIView):
         cart.save()
 
         # ✅ Manually construct dictionary instead of using serializer
-        
         order_data = {
             "id": order.id,
             "user": order.user.id,
             "order_type": order.order_type,
             "table_number": order.table_number,
             "total_amount": float(order.total_amount),
-            "created_at": order.ordered_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "ordered_at": order.ordered_at.strftime("%Y-%m-%d %H:%M:%S"),  # Fixed: Use ordered_at
             "items": []
         }
 
@@ -203,8 +203,8 @@ class PlaceOrderView(APIView):
             })
 
         # Print to Kitchen and Counter
-        kitchen_ip = '192.168.0.106'
-        counter_ip = '192.168.0.103'
+        kitchen_ip = '192.168.0.101'
+        counter_ip = '192.168.0.100'
 
         print_kitchen = print_kitchen_bill(order_data, kitchen_ip)
         print_counter = print_counter_bill(order_data, counter_ip)
