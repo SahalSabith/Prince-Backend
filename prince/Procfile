@@ -1,1 +1,1 @@
-web: gunicorn prince.wsgi
+web: gunicorn prince.wsgi --log-file -
