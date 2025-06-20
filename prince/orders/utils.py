@@ -2,6 +2,8 @@
 
 from escpos.printer import Network
 import logging
+import qrcode
+from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +48,33 @@ def get_item_price(item, qty=1):
         return 0.0
     
     return 0.0
+
+
+def generate_upi_qr_for_printer(upi_id, name, amount, note):
+    """Generate UPI QR code and return as bytes for printer"""
+    try:
+        upi_url = f"upi://pay?pa={upi_id}&pn={name}&am={amount}&cu=INR&tn={note}"
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=4,
+            border=2,
+        )
+        qr.add_data(upi_url)
+        qr.make(fit=True)
+        
+        # Create QR code image
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        
+        # Convert to bytes
+        img_buffer = BytesIO()
+        qr_img.save(img_buffer, format='PNG')
+        img_buffer.seek(0)
+        
+        return img_buffer.getvalue()
+    except Exception as e:
+        logger.error(f"Error generating UPI QR code: {e}")
+        return None
 
 
 def print_kitchen_bill(order_data, printer_ip):
@@ -119,7 +148,7 @@ def print_kitchen_bill(order_data, printer_ip):
 
 
 def print_counter_bill(order_data, printer_ip):
-    """Print counter bill with improved error handling"""
+    """Print counter bill with improved error handling and UPI QR code"""
     try:
         printer = Network(printer_ip)
 
@@ -188,6 +217,34 @@ def print_counter_bill(order_data, printer_ip):
         printer.set(bold=False)
 
         printer.text("-" * 32 + "\n")
+
+        # Generate and print UPI QR code
+        try:
+            token_id = order_data.get('id', 'N/A')
+            table_info = f", Table {order_data['table_number']}" if order_data.get('table_number') else ""
+            qr_note = f"Bill #{token_id}{table_info}"
+            
+            qr_data = generate_upi_qr_for_printer(
+                upi_id="sahalsabith111-1@okicici",
+                name="Prince Restaurant",
+                amount=f"{float(total_amount):.2f}",
+                note=qr_note
+            )
+            
+            if qr_data:
+                printer.set(align='center')
+                printer.text("SCAN TO PAY:\n")
+                printer.image(qr_data)
+                printer.text("\n")
+        except Exception as e:
+            logger.error(f"Failed to print QR code: {e}")
+            # Continue without QR code if it fails
+
+        # Waiting message
+        printer.set(align='center', bold=True)
+        printer.text("PLEASE WAIT 20 MINUTES\n")
+        printer.text("FOR FOOD PREPARATION\n\n")
+        printer.set(bold=False)
 
         # Footer
         printer.set(align='center')
