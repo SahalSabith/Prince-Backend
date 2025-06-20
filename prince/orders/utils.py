@@ -225,7 +225,7 @@ def print_counter_bill(order_data, printer_ip):
             qr_note = f"Bill #{token_id}{table_info}"
             
             qr_img = generate_upi_qr_for_printer(
-                upi_id="sahalsabith111-1@okicici",
+                upi_id="paytmqr65m7tq@ptys",
                 name="Prince Restaurant",
                 amount=f"{float(total_amount):.2f}",
                 note=qr_note
