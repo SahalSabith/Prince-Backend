@@ -1,7 +1,7 @@
 # models.py
 from django.db import models
 from django.contrib.auth.models import User
-from products.models import Product
+from products.models import Product, Extra
 from django.utils import timezone
 
 
@@ -38,11 +38,26 @@ class CartItem(models.Model):
 
     @property
     def total_amount(self):
-        """Calculate total amount dynamically"""
-        return self.item.price * self.quantity
+        """Calculate total amount including extras"""
+        base_total = self.item.price * self.quantity
+        extras_total = sum(extra.total_amount for extra in self.extras.all())
+        return base_total + extras_total
 
     def __str__(self):
         return f"{self.item.name} x {self.quantity} in {self.cart.user.username}'s cart"
+
+
+class CartItemExtra(models.Model):
+    cart_item = models.ForeignKey(CartItem, on_delete=models.CASCADE, related_name='extras')
+    extra = models.ForeignKey('products.Extra', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+
+    @property
+    def total_amount(self):
+        return self.extra.price * self.quantity
+
+    def __str__(self):
+        return f"{self.extra.name} x {self.quantity}"
 
 
 class Order(models.Model):
@@ -70,10 +85,26 @@ class OrderItem(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
 
     def save(self, *args, **kwargs):
-        # Calculate total_amount before saving
+        # Calculate total_amount before saving if not provided
         if not self.total_amount:
             self.total_amount = self.item.price * self.quantity
         super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.item.name} x {self.quantity}"
+
+
+class OrderItemExtra(models.Model):
+    order_item = models.ForeignKey(OrderItem, on_delete=models.CASCADE, related_name='extras')
+    extra = models.ForeignKey('products.Extra', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField(default=1)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+
+    def save(self, *args, **kwargs):
+        # Calculate total_amount before saving if not provided
+        if not self.total_amount:
+            self.total_amount = self.extra.price * self.quantity
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.extra.name} x {self.quantity}"
