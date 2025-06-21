@@ -8,14 +8,17 @@ from products.serializers import ProductSerializer, ExtraSerializer
 class CartItemExtraSerializer(serializers.ModelSerializer):
     extra = ExtraSerializer(read_only=True)
     total_amount = serializers.SerializerMethodField()
+    extra_name = serializers.SerializerMethodField()
 
     class Meta:
         model = CartItemExtra
-        fields = ['id', 'extra', 'quantity', 'total_amount']
+        fields = ['id', 'extra', 'quantity', 'total_amount','extra_name']
 
     def get_total_amount(self, obj):
         return obj.extra.price * obj.quantity
-
+    
+    def get_extra_name(self, obj):
+        return obj.extra.name if obj.extra else None
 
 class CartItemSerializer(serializers.ModelSerializer):
     item = ProductSerializer(read_only=True)
