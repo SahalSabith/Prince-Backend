@@ -115,7 +115,7 @@ class CartItemDeleteView(APIView):
     """Remove individual cart item"""
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, item_id):
+    def post(self, request, item_id):
         try:
             # Get the cart item and ensure it belongs to the user
             cart_item = CartItem.objects.select_related('cart').get(
