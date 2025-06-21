@@ -1,5 +1,5 @@
 # utils.py
-
+from django.utils.timezone import localtime
 from escpos.printer import Network
 import logging
 from datetime import datetime
@@ -49,19 +49,19 @@ def get_item_price(item, qty=1):
     return 0.0
 
 
-def format_datetime(datetime_str):
-    """Format datetime string to readable format"""
+def format_datetime(datetime_obj):
+    """Format timezone-aware datetime to local format"""
     try:
-        if isinstance(datetime_str, str):
-            # Parse the datetime string
-            dt = datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
-        else:
-            dt = datetime_str
-        
-        # Format to readable format
-        date_str = dt.strftime("%d-%m-%Y")
-        time_str = dt.strftime("%H:%M")
+        if isinstance(datetime_obj, str):
+            # Convert string to datetime
+            datetime_obj = datetime.fromisoformat(datetime_obj.replace('Z', '+00:00'))
+
+        # Localize datetime
+        dt_local = localtime(datetime_obj)
+        date_str = dt_local.strftime("%d-%m-%Y")
+        time_str = dt_local.strftime("%H:%M")
         return date_str, time_str
+
     except Exception as e:
         logger.error(f"Error formatting datetime: {e}")
         return "N/A", "N/A"
@@ -104,16 +104,40 @@ def print_kitchen_bill(order_data, printer_ip):
         for item in order_data.get("items", []):
             qty = item.get("quantity", 1)
             name = get_item_name(item)
-            price = get_item_price(item, qty)
-            total_calculated += price
+            # Calculate base price
+            item_data = item.get("item") or item.get("product") or {}
+            base_price = float(item_data.get("price", 0)) * qty
 
-            # Item name and quantity - centered
+            # Calculate total extras price
+            extras_total = 0
+            if 'extras' in item and item['extras']:
+                for extra in item['extras']:
+                    extras_total += float(extra.get('total_amount', 0))
+
+            # Final item total
+            item_total = base_price + extras_total
+            total_calculated += item_total
+
+            # Print base item
             printer.set(align='center', bold=True, width=2, height=2)
             printer.text(f"{qty} x {name.upper()}\n")
 
-            # Price - centered
             printer.set(align='center', bold=True, width=1, height=1)
-            printer.text(f"Rs {price:.2f}\n")
+            printer.text(f"Rs {base_price:.2f}\n")
+
+            # Print extras if any
+            if 'extras' in item and item['extras']:
+                printer.set(align='center', bold=False, width=1, height=1)
+                for extra in item['extras']:
+                    extra_name = extra.get('extra_name', extra.get('name', 'Extra'))
+                    extra_qty = extra.get('quantity', 1)
+                    extra_price = float(extra.get('total_amount', 0))
+                    printer.text(f"  + {extra_qty}x {extra_name} (Rs {extra_price:.2f})\n")
+
+            # Optional: print item total
+            printer.set(align='center', bold=True, width=1, height=1)
+            printer.text(f"Item Total: Rs {item_total:.2f}\n")
+
 
             # Extras if any
             if 'extras' in item and item['extras']:
@@ -150,7 +174,7 @@ def print_kitchen_bill(order_data, printer_ip):
 
 
 def print_counter_bill(order_data, printer_ip):
-    """Print counter bill with improved error handling (removed UPI QR)"""
+    """Print counter bill with corrected extras breakdown"""
     try:
         printer = Network(printer_ip)
 
@@ -193,11 +217,22 @@ def print_counter_bill(order_data, printer_ip):
         for item in order_data.get("items", []):
             qty = item.get('quantity', 1)
             name = get_item_name(item)
-            price = get_item_price(item, qty)
-            total_calculated += price
 
+            # Split price logic
+            item_data = item.get("item") or item.get("product") or {}
+            base_price = float(item_data.get("price", 0)) * qty
+
+            extras_total = 0
+            if 'extras' in item and item['extras']:
+                for extra in item['extras']:
+                    extras_total += float(extra.get('total_amount', 0))
+
+            item_total = base_price + extras_total
+            total_calculated += item_total
+
+            # Print base item
             item_line = f"{qty}x {name}"
-            price_str = f"Rs{price:.2f}"
+            price_str = f"Rs{base_price:.2f}"
             if len(item_line + price_str) <= 32:
                 spaces = 32 - len(item_line + price_str)
                 printer.text(f"{item_line}{' ' * spaces}{price_str}\n")
@@ -205,12 +240,12 @@ def print_counter_bill(order_data, printer_ip):
                 printer.text(f"{item_line}\n")
                 printer.text(f"{' ' * (32 - len(price_str))}{price_str}\n")
 
-            # Extras if any
+            # Print extras
             if 'extras' in item and item['extras']:
                 for extra in item['extras']:
                     extra_name = extra.get('extra_name', extra.get('name', 'Extra'))
                     extra_qty = extra.get('quantity', 1)
-                    extra_price = extra.get('total_amount', 0)
+                    extra_price = float(extra.get('total_amount', 0))
                     extra_line = f"  + {extra_qty}x {extra_name}"
                     extra_price_str = f"Rs{extra_price:.2f}"
                     if len(extra_line + extra_price_str) <= 32:
@@ -220,6 +255,11 @@ def print_counter_bill(order_data, printer_ip):
                         printer.text(f"{extra_line}\n")
                         printer.text(f"{' ' * (32 - len(extra_price_str))}{extra_price_str}\n")
 
+            # Optional: show total for this item
+            item_total_str = f"Item Total: Rs{item_total:.2f}"
+            printer.text(f"{item_total_str:>32}\n")
+
+            # Notes
             note = item.get('note', '') or item.get('notes', '')
             if note:
                 printer.text(f"   Note: {note}\n")
