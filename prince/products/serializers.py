@@ -23,7 +23,7 @@ class ProductSerializer(serializers.ModelSerializer):  # Fixed: Changed from pro
 
     class Meta:
         model = Product
-        fields = ['id', 'category', 'category_id', 'name', 'price', 'image', 'extras']
+        fields = ['id','is_popular','category', 'category_id', 'name', 'price', 'image', 'extras']
 
     def validate_category_id(self, value):
         if not Category.objects.filter(id=value).exists():
