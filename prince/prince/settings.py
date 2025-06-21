@@ -164,3 +164,7 @@ CSRF_TRUSTED_ORIGINS = [
     "https://api.princebakery.shop",
     "https://billing.princebakery.shop",
 ]
+
+
+TIME_ZONE = 'Asia/Kolkata'
+USE_TZ = True

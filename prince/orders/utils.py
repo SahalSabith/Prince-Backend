@@ -96,14 +96,6 @@ def print_kitchen_bill(order_data, printer_ip):
         printer.text("=" * 32 + "\n")
         printer.text(f"TOKEN: {order_data.get('id', 'N/A')}\n")
 
-        # Fixed datetime formatting
-        ordered_at = order_data.get('ordered_at') or order_data.get('created_at', '')
-        if ordered_at:
-            date_str, time_str = format_datetime(ordered_at)
-            printer.text(f"DATE: {date_str}\n")
-            printer.text(f"TIME: {time_str}\n")
-        printer.text("=" * 32 + "\n")
-
         # Items with prices - Centered alignment
         printer.set(align='center', bold=True, width=2, height=2)
         printer.text("ITEMS:\n\n")
