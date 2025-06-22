@@ -50,21 +50,45 @@ def get_item_price(item_data, qty=1):
 
 
 def get_base_item_price(item):
-    """Get base item price without extras"""
+    """Get base item price without extras - Fixed for serializer structure"""
     try:
         qty = item.get("quantity", 1)
+        price = 0
         
-        # Try to get price from nested item/product object
-        item_data = item.get("item") or item.get("product")
-        if isinstance(item_data, dict):
-            price = float(item_data.get("price", 0))
-        elif hasattr(item_data, "price"):
-            price = float(item_data.price)
-        else:
-            # Fallback to direct price field
-            price = float(item.get("price", 0))
+        # Debug logging
+        logger.info(f"Processing item for price: {item}")
         
-        return price * qty
+        # Based on your CartItemSerializer, the structure should be:
+        # item -> { "item": { "id": 1, "name": "Product Name", "price": "10.00", ... } }
+        
+        # Try to get price from nested item object (from ProductSerializer)
+        item_data = item.get("item")
+        
+        if item_data and isinstance(item_data, dict):
+            # The price comes from ProductSerializer and might be a string representation of Decimal
+            price_value = item_data.get("price")
+            if price_value is not None:
+                # Handle string representation of Decimal (e.g., "10.00")
+                price = float(str(price_value))
+                logger.info(f"Got price from serialized item: {price}")
+        
+        # If no nested 'item', try direct access (fallback)
+        elif "price" in item:
+            price_value = item.get("price")
+            if price_value is not None:
+                price = float(str(price_value))
+                logger.info(f"Got price from direct field: {price}")
+        
+        # Additional debug info
+        if price == 0:
+            logger.warning(f"Price still 0. Item structure: {list(item.keys())}")
+            if "item" in item:
+                logger.warning(f"Nested item structure: {list(item['item'].keys()) if isinstance(item['item'], dict) else type(item['item'])}")
+        
+        total_price = price * qty
+        logger.info(f"Final calculation: {price} * {qty} = {total_price}")
+        
+        return total_price
         
     except (ValueError, TypeError, AttributeError) as e:
         logger.error(f"Error getting base price for item: {item}, Error: {e}")
@@ -72,31 +96,33 @@ def get_base_item_price(item):
 
 
 def get_extras_total(item):
-    """Calculate total price of all extras for an item"""
+    """Calculate total price of all extras for an item - Fixed for serializer structure"""
     try:
         extras_total = 0
         extras = item.get('extras', [])
         
         if not extras:
             return 0.0
-            
-        for extra in extras:
-            # Try different ways to get extra price
-            if 'total_amount' in extra:
-                extras_total += float(extra['total_amount'])
-            elif 'price' in extra:
-                extra_qty = extra.get('quantity', 1)
-                extras_total += float(extra['price']) * extra_qty
-            else:
-                # Try nested extra object
-                extra_data = extra.get('extra')
-                if isinstance(extra_data, dict) and 'price' in extra_data:
-                    extra_qty = extra.get('quantity', 1)
-                    extras_total += float(extra_data['price']) * extra_qty
-                elif hasattr(extra_data, 'price'):
-                    extra_qty = extra.get('quantity', 1)
-                    extras_total += float(extra_data.price) * extra_qty
         
+        # Based on your CartItemExtraSerializer, the structure should be:
+        # extras -> [{ "extra": { "id": 1, "name": "Extra Name", "price": "5.00" }, "quantity": 2, "total_amount": 10.0, "extra_name": "Extra Name" }]
+        
+        for extra in extras:
+            # Your serializer provides total_amount directly
+            if 'total_amount' in extra and extra['total_amount'] is not None:
+                extras_total += float(extra['total_amount'])
+                logger.info(f"Added extra total_amount: {extra['total_amount']}")
+            else:
+                # Fallback calculation if total_amount is missing
+                extra_data = extra.get('extra')
+                if extra_data and isinstance(extra_data, dict):
+                    extra_price = float(str(extra_data.get('price', 0)))
+                    extra_qty = extra.get('quantity', 1)
+                    extra_total = extra_price * extra_qty
+                    extras_total += extra_total
+                    logger.info(f"Calculated extra total: {extra_price} * {extra_qty} = {extra_total}")
+        
+        logger.info(f"Total extras amount: {extras_total}")
         return extras_total
         
     except (ValueError, TypeError, AttributeError) as e:
@@ -190,28 +216,26 @@ def print_kitchen_bill(order_data, printer_ip):
                 extras = item.get('extras', [])
                 printer.set(align='center', bold=False, width=1, height=1)
                 for extra in extras:
-                    extra_name = extra.get('extra_name') or extra.get('name', 'Extra')
-                    # Handle nested extra object
-                    if not extra_name or extra_name == 'Extra':
+                    # Your serializer provides extra_name directly
+                    extra_name = extra.get('extra_name')
+                    if not extra_name:
+                        # Fallback to nested extra object
                         extra_data = extra.get('extra')
                         if isinstance(extra_data, dict):
                             extra_name = extra_data.get('name', 'Extra')
-                        elif hasattr(extra_data, 'name'):
-                            extra_name = extra_data.name
+                        else:
+                            extra_name = 'Extra'
                     
                     extra_qty = extra.get('quantity', 1)
                     
-                    # Get extra price
+                    # Get extra price from total_amount (provided by serializer)
                     if 'total_amount' in extra:
                         extra_price = float(extra['total_amount'])
-                    elif 'price' in extra:
-                        extra_price = float(extra['price']) * extra_qty
                     else:
+                        # Fallback calculation
                         extra_data = extra.get('extra')
                         if isinstance(extra_data, dict) and 'price' in extra_data:
-                            extra_price = float(extra_data['price']) * extra_qty
-                        elif hasattr(extra_data, 'price'):
-                            extra_price = float(extra_data.price) * extra_qty
+                            extra_price = float(str(extra_data['price'])) * extra_qty
                         else:
                             extra_price = 0.0
                     
@@ -316,28 +340,26 @@ def print_counter_bill(order_data, printer_ip):
             if extras_total > 0:
                 extras = item.get('extras', [])
                 for extra in extras:
-                    extra_name = extra.get('extra_name') or extra.get('name', 'Extra')
-                    # Handle nested extra object
-                    if not extra_name or extra_name == 'Extra':
+                    # Your serializer provides extra_name directly
+                    extra_name = extra.get('extra_name')
+                    if not extra_name:
+                        # Fallback to nested extra object
                         extra_data = extra.get('extra')
                         if isinstance(extra_data, dict):
                             extra_name = extra_data.get('name', 'Extra')
-                        elif hasattr(extra_data, 'name'):
-                            extra_name = extra_data.name
+                        else:
+                            extra_name = 'Extra'
                     
                     extra_qty = extra.get('quantity', 1)
                     
-                    # Get extra price
+                    # Get extra price from total_amount (provided by serializer)
                     if 'total_amount' in extra:
                         extra_price = float(extra['total_amount'])
-                    elif 'price' in extra:
-                        extra_price = float(extra['price']) * extra_qty
                     else:
+                        # Fallback calculation
                         extra_data = extra.get('extra')
                         if isinstance(extra_data, dict) and 'price' in extra_data:
-                            extra_price = float(extra_data['price']) * extra_qty
-                        elif hasattr(extra_data, 'price'):
-                            extra_price = float(extra_data.price) * extra_qty
+                            extra_price = float(str(extra_data['price'])) * extra_qty
                         else:
                             extra_price = 0.0
                     
