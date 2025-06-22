@@ -50,36 +50,38 @@ def get_item_price(item_data, qty=1):
 
 
 def get_base_item_price(item):
-    """Get base item price without extras - Fixed for serializer structure"""
+    """Get base item price without extras - Fixed for all data structures"""
     try:
         qty = item.get("quantity", 1)
         price = 0
         
-        # Debug logging
         logger.info(f"Processing item for price: {item}")
         
-        # Based on your CartItemSerializer, the structure should be:
-        # item -> { "item": { "id": 1, "name": "Product Name", "price": "10.00", ... } }
-        
-        # Try to get price from nested item object (from ProductSerializer)
-        item_data = item.get("item")
-        
-        if item_data and isinstance(item_data, dict):
-            # The price comes from ProductSerializer and might be a string representation of Decimal
+        # Method 1: Try serialized structure (from API)
+        # Structure: { "item": { "price": "10.00", "name": "Product Name" } }
+        if "item" in item and isinstance(item["item"], dict):
+            item_data = item["item"]
             price_value = item_data.get("price")
             if price_value is not None:
-                # Handle string representation of Decimal (e.g., "10.00")
                 price = float(str(price_value))
                 logger.info(f"Got price from serialized item: {price}")
         
-        # If no nested 'item', try direct access (fallback)
+        # Method 2: Try direct structure (from PlaceOrderView)
+        # Structure: { "item_name": "Product Name", "price": 10.00 }
         elif "price" in item:
             price_value = item.get("price")
             if price_value is not None:
                 price = float(str(price_value))
                 logger.info(f"Got price from direct field: {price}")
         
-        # Additional debug info
+        # Method 3: Try total_amount field (fallback)
+        elif "total_amount" in item:
+            total_amount = float(item["total_amount"])
+            # If there are extras, subtract them to get base price
+            extras_total = get_extras_total(item)
+            price = (total_amount - extras_total) / qty if qty > 0 else 0
+            logger.info(f"Calculated price from total_amount: {price}")
+        
         if price == 0:
             logger.warning(f"Price still 0. Item structure: {list(item.keys())}")
             if "item" in item:
@@ -96,7 +98,7 @@ def get_base_item_price(item):
 
 
 def get_extras_total(item):
-    """Calculate total price of all extras for an item - Fixed for serializer structure"""
+    """Calculate total price of all extras for an item - Fixed for all structures"""
     try:
         extras_total = 0
         extras = item.get('extras', [])
@@ -104,23 +106,27 @@ def get_extras_total(item):
         if not extras:
             return 0.0
         
-        # Based on your CartItemExtraSerializer, the structure should be:
-        # extras -> [{ "extra": { "id": 1, "name": "Extra Name", "price": "5.00" }, "quantity": 2, "total_amount": 10.0, "extra_name": "Extra Name" }]
-        
         for extra in extras:
-            # Your serializer provides total_amount directly
+            # Method 1: Check for total_amount (from serializer)
             if 'total_amount' in extra and extra['total_amount'] is not None:
                 extras_total += float(extra['total_amount'])
                 logger.info(f"Added extra total_amount: {extra['total_amount']}")
+            # Method 2: Check for direct price and quantity
+            elif 'price' in extra:
+                extra_price = float(str(extra.get('price', 0)))
+                extra_qty = extra.get('quantity', 1)
+                extra_total = extra_price * extra_qty
+                extras_total += extra_total
+                logger.info(f"Calculated extra total: {extra_price} * {extra_qty} = {extra_total}")
+            # Method 3: Check for nested extra object
             else:
-                # Fallback calculation if total_amount is missing
                 extra_data = extra.get('extra')
                 if extra_data and isinstance(extra_data, dict):
                     extra_price = float(str(extra_data.get('price', 0)))
                     extra_qty = extra.get('quantity', 1)
                     extra_total = extra_price * extra_qty
                     extras_total += extra_total
-                    logger.info(f"Calculated extra total: {extra_price} * {extra_qty} = {extra_total}")
+                    logger.info(f"Calculated nested extra total: {extra_price} * {extra_qty} = {extra_total}")
         
         logger.info(f"Total extras amount: {extras_total}")
         return extras_total
@@ -156,7 +162,7 @@ def format_datetime(datetime_obj):
 
 
 def print_kitchen_bill(order_data, printer_ip):
-    """Print kitchen bill with improved error handling and fixed pricing"""
+    """Print kitchen bill with single line format and fixed pricing"""
     try:
         printer = Network(printer_ip)
 
@@ -184,7 +190,7 @@ def print_kitchen_bill(order_data, printer_ip):
         printer.text("=" * 32 + "\n")
         printer.text(f"TOKEN: {order_data.get('id', 'N/A')}\n")
 
-        # Items with prices - Centered alignment
+        # Items - Single line format
         printer.set(align='center', bold=True, width=2, height=2)
         printer.text("ITEMS:\n\n")
 
@@ -194,56 +200,25 @@ def print_kitchen_bill(order_data, printer_ip):
             qty = item.get("quantity", 1)
             name = get_item_name(item)
             
-            # Get base price using our fixed function
-            base_price = get_base_item_price(item)
-            
-            # Get extras total using our fixed function
-            extras_total = get_extras_total(item)
-            
-            # Final item total
-            item_total = base_price + extras_total
+            # Calculate item total (base + extras)
+            item_total = get_item_total(item)
             total_calculated += item_total
 
-            # Print base item
+            # Single line format: "2 x CHICKEN FRIED RICE Rs 150.00"
             printer.set(align='center', bold=True, width=2, height=2)
-            printer.text(f"{qty} x {name.upper()}\n")
+            printer.text(f"{qty} x {name.upper()} Rs {item_total:.2f}\n")
 
-            printer.set(align='center', bold=True, width=1, height=1)
-            printer.text(f"Rs {base_price:.2f}\n")
-
-            # Print extras if any
-            if extras_total > 0:
-                extras = item.get('extras', [])
+            # Show extras details in smaller font
+            extras = item.get('extras', [])
+            if extras:
                 printer.set(align='center', bold=False, width=1, height=1)
                 for extra in extras:
-                    # Your serializer provides extra_name directly
-                    extra_name = extra.get('extra_name')
-                    if not extra_name:
-                        # Fallback to nested extra object
-                        extra_data = extra.get('extra')
-                        if isinstance(extra_data, dict):
-                            extra_name = extra_data.get('name', 'Extra')
-                        else:
-                            extra_name = 'Extra'
+                    extra_name = extra.get('extra_name') or extra.get('name', 'Extra')
+                    if 'extra' in extra and isinstance(extra['extra'], dict):
+                        extra_name = extra['extra'].get('name', extra_name)
                     
                     extra_qty = extra.get('quantity', 1)
-                    
-                    # Get extra price from total_amount (provided by serializer)
-                    if 'total_amount' in extra:
-                        extra_price = float(extra['total_amount'])
-                    else:
-                        # Fallback calculation
-                        extra_data = extra.get('extra')
-                        if isinstance(extra_data, dict) and 'price' in extra_data:
-                            extra_price = float(str(extra_data['price'])) * extra_qty
-                        else:
-                            extra_price = 0.0
-                    
-                    printer.text(f"  + {extra_qty}x {extra_name} (Rs {extra_price:.2f})\n")
-
-            # Print item total
-            printer.set(align='center', bold=True, width=1, height=1)
-            printer.text(f"Item Total: Rs {item_total:.2f}\n")
+                    printer.text(f"  + {extra_qty}x {extra_name}\n")
 
             # Note
             note = item.get('note', '') or item.get('notes', '')
@@ -273,7 +248,7 @@ def print_kitchen_bill(order_data, printer_ip):
 
 
 def print_counter_bill(order_data, printer_ip):
-    """Print counter bill with corrected extras breakdown and fixed pricing"""
+    """Print counter bill with single line format and fixed pricing"""
     try:
         printer = Network(printer_ip)
 
@@ -306,7 +281,7 @@ def print_counter_bill(order_data, printer_ip):
 
         printer.text("-" * 32 + "\n")
 
-        # Items
+        # Items - Single line format
         printer.set(bold=True)
         printer.text("ITEMS:\n")
         printer.set(bold=False)
@@ -317,18 +292,14 @@ def print_counter_bill(order_data, printer_ip):
             qty = item.get('quantity', 1)
             name = get_item_name(item)
 
-            # Get base price using our fixed function
-            base_price = get_base_item_price(item)
-            
-            # Get extras total using our fixed function
-            extras_total = get_extras_total(item)
-            
-            item_total = base_price + extras_total
+            # Calculate item total (base + extras)
+            item_total = get_item_total(item)
             total_calculated += item_total
 
-            # Print base item
+            # Single line format with proper alignment
             item_line = f"{qty}x {name}"
-            price_str = f"Rs{base_price:.2f}"
+            price_str = f"Rs{item_total:.2f}"
+            
             if len(item_line + price_str) <= 32:
                 spaces = 32 - len(item_line + price_str)
                 printer.text(f"{item_line}{' ' * spaces}{price_str}\n")
@@ -336,45 +307,16 @@ def print_counter_bill(order_data, printer_ip):
                 printer.text(f"{item_line}\n")
                 printer.text(f"{' ' * (32 - len(price_str))}{price_str}\n")
 
-            # Print extras
-            if extras_total > 0:
-                extras = item.get('extras', [])
+            # Show extras details
+            extras = item.get('extras', [])
+            if extras:
                 for extra in extras:
-                    # Your serializer provides extra_name directly
-                    extra_name = extra.get('extra_name')
-                    if not extra_name:
-                        # Fallback to nested extra object
-                        extra_data = extra.get('extra')
-                        if isinstance(extra_data, dict):
-                            extra_name = extra_data.get('name', 'Extra')
-                        else:
-                            extra_name = 'Extra'
+                    extra_name = extra.get('extra_name') or extra.get('name', 'Extra')
+                    if 'extra' in extra and isinstance(extra['extra'], dict):
+                        extra_name = extra['extra'].get('name', extra_name)
                     
                     extra_qty = extra.get('quantity', 1)
-                    
-                    # Get extra price from total_amount (provided by serializer)
-                    if 'total_amount' in extra:
-                        extra_price = float(extra['total_amount'])
-                    else:
-                        # Fallback calculation
-                        extra_data = extra.get('extra')
-                        if isinstance(extra_data, dict) and 'price' in extra_data:
-                            extra_price = float(str(extra_data['price'])) * extra_qty
-                        else:
-                            extra_price = 0.0
-                    
-                    extra_line = f"  + {extra_qty}x {extra_name}"
-                    extra_price_str = f"Rs{extra_price:.2f}"
-                    if len(extra_line + extra_price_str) <= 32:
-                        spaces = 32 - len(extra_line + extra_price_str)
-                        printer.text(f"{extra_line}{' ' * spaces}{extra_price_str}\n")
-                    else:
-                        printer.text(f"{extra_line}\n")
-                        printer.text(f"{' ' * (32 - len(extra_price_str))}{extra_price_str}\n")
-
-            # Show total for this item
-            item_total_str = f"Item Total: Rs{item_total:.2f}"
-            printer.text(f"{item_total_str:>32}\n")
+                    printer.text(f"  + {extra_qty}x {extra_name}\n")
 
             # Notes
             note = item.get('note', '') or item.get('notes', '')
