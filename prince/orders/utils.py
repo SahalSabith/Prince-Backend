@@ -1,8 +1,9 @@
 # utils.py
-from django.utils.timezone import localtime
+from django.utils.timezone import localtime, now
 from escpos.printer import Network
 import logging
 from datetime import datetime
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -144,13 +145,37 @@ def get_item_total(item):
 
 
 def format_datetime(datetime_obj):
-    """Format timezone-aware datetime to local format"""
+    """Format timezone-aware datetime to local format with fallback to current time"""
     try:
+        if not datetime_obj:
+            # If no datetime provided, use current time
+            datetime_obj = now()
+        
         if isinstance(datetime_obj, str):
-            # Convert string to datetime
-            datetime_obj = datetime.fromisoformat(datetime_obj.replace('Z', '+00:00'))
+            # Try to parse different string formats
+            try:
+                # ISO format with Z
+                if datetime_obj.endswith('Z'):
+                    datetime_obj = datetime.fromisoformat(datetime_obj.replace('Z', '+00:00'))
+                # ISO format without timezone
+                elif 'T' in datetime_obj and '+' not in datetime_obj and 'Z' not in datetime_obj:
+                    datetime_obj = datetime.fromisoformat(datetime_obj)
+                    # Assume UTC if no timezone info
+                    if datetime_obj.tzinfo is None:
+                        datetime_obj = pytz.UTC.localize(datetime_obj)
+                else:
+                    # Try to parse as ISO format
+                    datetime_obj = datetime.fromisoformat(datetime_obj)
+            except ValueError:
+                # If parsing fails, use current time
+                logger.warning(f"Could not parse datetime string: {datetime_obj}, using current time")
+                datetime_obj = now()
 
-        # Localize datetime
+        # Ensure we have a timezone-aware datetime
+        if datetime_obj.tzinfo is None:
+            datetime_obj = pytz.UTC.localize(datetime_obj)
+
+        # Localize datetime to system timezone
         dt_local = localtime(datetime_obj)
         date_str = dt_local.strftime("%d-%m-%Y")
         time_str = dt_local.strftime("%H:%M")
@@ -158,11 +183,14 @@ def format_datetime(datetime_obj):
 
     except Exception as e:
         logger.error(f"Error formatting datetime: {e}")
-        return "N/A", "N/A"
+        # Return current date/time as fallback
+        current_time = now()
+        dt_local = localtime(current_time)
+        return dt_local.strftime("%d-%m-%Y"), dt_local.strftime("%H:%M")
 
 
 def print_kitchen_bill(order_data, printer_ip):
-    """Print kitchen bill with single line format and fixed pricing"""
+    """Print kitchen bill with improved formatting and fixed pricing"""
     try:
         printer = Network(printer_ip)
 
@@ -190,7 +218,7 @@ def print_kitchen_bill(order_data, printer_ip):
         printer.text("=" * 32 + "\n")
         printer.text(f"TOKEN: {order_data.get('id', 'N/A')}\n")
 
-        # Items - Single line format
+        # Items - Improved formatting
         printer.set(align='center', bold=True, width=2, height=2)
         printer.text("ITEMS:\n\n")
 
@@ -204,21 +232,23 @@ def print_kitchen_bill(order_data, printer_ip):
             item_total = get_item_total(item)
             total_calculated += item_total
 
-            # Single line format: "2 x CHICKEN FRIED RICE Rs 150.00"
+            # Improved format with better spacing
             printer.set(align='center', bold=True, width=2, height=2)
-            printer.text(f"{qty} x {name.upper()} Rs {item_total:.2f}\n")
+            printer.text(f"{qty} x {name.upper()}\n")
+            printer.text(f"Rs {item_total:.2f}\n")
 
-            # Show extras details in smaller font
+            # Show extras details in smaller font with better formatting
             extras = item.get('extras', [])
             if extras:
                 printer.set(align='center', bold=False, width=1, height=1)
+                printer.text("Extras:\n")
                 for extra in extras:
                     extra_name = extra.get('extra_name') or extra.get('name', 'Extra')
                     if 'extra' in extra and isinstance(extra['extra'], dict):
                         extra_name = extra['extra'].get('name', extra_name)
                     
                     extra_qty = extra.get('quantity', 1)
-                    printer.text(f"  + {extra_qty}x {extra_name}\n")
+                    printer.text(f"  • {extra_qty}x {extra_name}\n")
 
             # Note
             note = item.get('note', '') or item.get('notes', '')
@@ -226,7 +256,7 @@ def print_kitchen_bill(order_data, printer_ip):
                 printer.set(align='center', bold=False, width=1, height=1)
                 printer.text(f"Note: {note}\n")
 
-            printer.text("\n")
+            printer.text("-" * 20 + "\n")
 
         # Total
         printer.set(align='center', bold=True, width=2, height=2)
@@ -248,7 +278,7 @@ def print_kitchen_bill(order_data, printer_ip):
 
 
 def print_counter_bill(order_data, printer_ip):
-    """Print counter bill with single line format and fixed pricing"""
+    """Print counter bill with improved formatting and fixed pricing"""
     try:
         printer = Network(printer_ip)
 
@@ -272,16 +302,15 @@ def print_counter_bill(order_data, printer_ip):
         if order_type == 'TABLE' and order_data.get('table_number'):
             printer.text(f"TABLE: {order_data['table_number']}\n")
 
-        # Fixed datetime formatting
+        # Fixed datetime formatting with fallback
         ordered_at = order_data.get('ordered_at') or order_data.get('created_at', '')
-        if ordered_at:
-            date_str, time_str = format_datetime(ordered_at)
-            printer.text(f"DATE: {date_str}\n")
-            printer.text(f"TIME: {time_str}\n")
+        date_str, time_str = format_datetime(ordered_at)
+        printer.text(f"DATE: {date_str}\n")
+        printer.text(f"TIME: {time_str}\n")
 
         printer.text("-" * 32 + "\n")
 
-        # Items - Single line format
+        # Items - Improved formatting
         printer.set(bold=True)
         printer.text("ITEMS:\n")
         printer.set(bold=False)
@@ -296,32 +325,34 @@ def print_counter_bill(order_data, printer_ip):
             item_total = get_item_total(item)
             total_calculated += item_total
 
-            # Single line format with proper alignment
-            item_line = f"{qty}x {name}"
-            price_str = f"Rs{item_total:.2f}"
+            # Improved formatting with consistent alignment
+            printer.set(bold=True)
+            printer.text(f"{qty}x {name}\n")
+            printer.set(bold=False)
             
-            if len(item_line + price_str) <= 32:
-                spaces = 32 - len(item_line + price_str)
-                printer.text(f"{item_line}{' ' * spaces}{price_str}\n")
-            else:
-                printer.text(f"{item_line}\n")
-                printer.text(f"{' ' * (32 - len(price_str))}{price_str}\n")
+            # Price aligned to the right
+            price_str = f"Rs {item_total:.2f}"
+            spaces = 32 - len(price_str)
+            printer.text(f"{' ' * spaces}{price_str}\n")
 
-            # Show extras details
+            # Show extras details with better formatting
             extras = item.get('extras', [])
             if extras:
+                printer.text("  Extras:\n")
                 for extra in extras:
                     extra_name = extra.get('extra_name') or extra.get('name', 'Extra')
                     if 'extra' in extra and isinstance(extra['extra'], dict):
                         extra_name = extra['extra'].get('name', extra_name)
                     
                     extra_qty = extra.get('quantity', 1)
-                    printer.text(f"  + {extra_qty}x {extra_name}\n")
+                    printer.text(f"    • {extra_qty}x {extra_name}\n")
 
             # Notes
             note = item.get('note', '') or item.get('notes', '')
             if note:
-                printer.text(f"   Note: {note}\n")
+                printer.text(f"  Note: {note}\n")
+            
+            printer.text("\n")
 
         printer.text("-" * 32 + "\n")
 
@@ -330,7 +361,10 @@ def print_counter_bill(order_data, printer_ip):
         total_amount = order_data.get('total_amount')
         if not total_amount or float(total_amount) == 0:
             total_amount = total_calculated
-        printer.text(f"TOTAL: Rs{float(total_amount):.2f}\n")
+        
+        total_str = f"TOTAL: Rs {float(total_amount):.2f}"
+        spaces = 32 - len(total_str)
+        printer.text(f"{' ' * spaces}{total_str}\n")
         printer.set(bold=False)
 
         printer.text("-" * 32 + "\n")
